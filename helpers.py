@@ -1,4 +1,6 @@
 # helpers.py
+# nrsy mmin ofqs rudr -- app password
+
 import time
 import pandas as pd
 import numpy as np
@@ -54,17 +56,30 @@ def fetch_history(market, asset_type, ticker, period_str):
 
 
 # Simple utility for formatting period strings for yfinance
+# def period_from_inputs(years=0, months=0, days=0):
+#     # yfinance accepts periods like '5y', '6mo', '30d'
+#     if years > 0 and months == 0 and days == 0:
+#         return f"{years}y"
+#     if months > 0 and years == 0 and days == 0:
+#         return f"{months}mo"
+#     if days > 0 and years == 0 and months == 0:
+#         return f"{days}d"
+#     # fallback: compute days
+#     total_days = years * 365 + months * 30 + days
+#     return f"{total_days}d"
+
+
+# all converted to one unit (trading days so that same period has same precision (1year = 365days))
+TRADING_DAYS_PER_YEAR = 252
+TRADING_DAYS_PER_MONTH = 21
+
 def period_from_inputs(years=0, months=0, days=0):
-    # yfinance accepts periods like '5y', '6mo', '30d'
-    if years > 0 and months == 0 and days == 0:
-        return f"{years}y"
-    if months > 0 and years == 0 and days == 0:
-        return f"{months}mo"
-    if days > 0 and years == 0 and months == 0:
-        return f"{days}d"
-    # fallback: compute days
-    total_days = years * 365 + months * 30 + days
-    return f"{total_days}d"
+    total_days = (
+        years * TRADING_DAYS_PER_YEAR +
+        months * TRADING_DAYS_PER_MONTH +
+        days
+    )
+    return f"{max(total_days, 1)}d"
 
 
 def send_email(smtp_server, smtp_port, username, password, to_email, subject, body):
@@ -92,7 +107,7 @@ def beep():
         print('\a')
 
 
-def notify_desktop(title, message):
+def notify_desktop(title, message=""):
     try:
         from plyer import notification
         notification.notify(title=title, message=message, timeout=6)
