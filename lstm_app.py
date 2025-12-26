@@ -14,7 +14,11 @@ from tensorflow.keras.layers import LSTM, Dense
 # Import your helper utilities
 from helpers import fetch_history, period_from_inputs, beep, notify_desktop, send_email
 
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
+
 
 # ============================================================
 # STREAMLIT UI
@@ -59,7 +63,7 @@ with st.sidebar.expander("Email Settings (optional)"):
     smtp_server = st.text_input("SMTP Server", SMTP_SERVER)
     smtp_port = st.number_input("SMTP Port", SMTP_PORT)
     smtp_user = st.text_input("SMTP Username / Email", value=USERNAME)
-    smtp_pass = st.text_input("SMTP Password", type=PASSWORD)
+    smtp_pass = st.text_input("SMTP Password", type="password", value=PASSWORD)
     alert_email = st.text_input("Send Alerts To Email", value=TO_EMAIL)
 
 
@@ -120,6 +124,42 @@ def lstm_forecast(model, scaler, scaled_values, days=30):
 # ============================================================
 # FETCH + FORECAST (LSTM)
 # ============================================================
+# if st.button("Fetch & Forecast"):
+
+#     try:
+#         df = fetch_history("US" if market == "US" else "India", asset_type, ticker, period)
+#         st.write("Downloaded:", len(df), "rows")
+
+#         if df.empty or "Close" not in df.columns:
+#             st.error("❌ No valid Close price data found.")
+#         else:
+#             close_prices = df["Close"].values
+
+#             # Train LSTM
+#             model, scaler, scaled = train_lstm(close_prices)
+
+#             # 30-day forecast
+#             forecast = lstm_forecast(model, scaler, scaled, days=30)
+
+#             # Show forecast
+#             st.subheader("LSTM Forecast (Next 30 Days)")
+#             st.line_chart(forecast)
+
+#             # Combine with historical for full chart
+#             combined = np.concatenate((close_prices[-120:], forecast.flatten()))
+#             st.subheader("Historical + Forecast Chart")
+#             st.line_chart(combined)
+
+#             st.success("Forecast generated successfully.")
+
+#     except Exception as e:
+#         st.error(f"Error: {e}")
+
+
+
+# ============================================================
+# FETCH + FORECAST (LSTM)
+# ============================================================
 if st.button("Fetch & Forecast"):
 
     try:
@@ -137,14 +177,23 @@ if st.button("Fetch & Forecast"):
             # 30-day forecast
             forecast = lstm_forecast(model, scaler, scaled, days=30)
 
-            # Show forecast
+            # Show forecast (just forecast values, no dates)
             st.subheader("LSTM Forecast (Next 30 Days)")
             st.line_chart(forecast)
 
-            # Combine with historical for full chart
-            combined = np.concatenate((close_prices[-120:], forecast.flatten()))
+            # Combine with historical for full chart with datetime index
+            recent_df = df[["Datetime", "Close"]].copy()
+            recent_df = recent_df.tail(120)  # last 120 rows or less
+
+            last_date = recent_df["Datetime"].iloc[-1]
+            future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=len(forecast))
+
+            combined_df = pd.DataFrame({
+                "Close": np.concatenate((recent_df["Close"].values, forecast.flatten()))
+            }, index = recent_df["Datetime"].tolist() + future_dates.tolist())
+
             st.subheader("Historical + Forecast Chart")
-            st.line_chart(combined)
+            st.line_chart(combined_df)
 
             st.success("Forecast generated successfully.")
 
